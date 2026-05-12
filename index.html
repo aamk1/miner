@@ -3,113 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>IWA 复刻版高级矿场</title>
-    <!-- 引入 Telegram 核心 SDK -->
+    <title>IWA 矿场</title>
     <script src="telegram.org"></script>
     <style>
-        :root { --gold: #f1c40f; --bg: #0a0a0a; }
-        body { background: var(--bg); color: #fff; font-family: -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; -webkit-user-select: none; }
-        .stats-card { background: #1a1a1a; border: 1px solid #333; padding: 20px; border-radius: 20px; width: 85%; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
-        .uid { font-size: 12px; color: #666; margin-bottom: 10px; font-family: monospace; }
-        .label { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .balance { font-size: 42px; font-weight: 800; color: var(--gold); margin: 10px 0; text-shadow: 0 0 15px rgba(241,196,15,0.3); }
-        .mine-btn { width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, #f39c12, #d35400); border: 8px solid #222; margin-top: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 80px; transition: transform 0.05s; box-shadow: 0 0 40px rgba(211, 84, 0, 0.3); outline: none; }
-        .mine-btn:active { transform: scale(0.92); filter: brightness(1.2); }
-        .hint { margin-top: 30px; font-size: 12px; color: #444; }
+        body { margin: 0; background-color: #111; color: #fff; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
+        .card { background: #222; border: 1px solid #333; padding: 20px; border-radius: 15px; text-align: center; width: 80%; max-width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 30px; }
+        .tip { color: #888; font-size: 13px; margin-bottom: 5px; }
+        .title { color: #aaa; font-size: 14px; margin-bottom: 10px; }
+        .balance-box { display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; color: #f39c12; }
+        .coin-icon { width: 30px; height: 30px; margin-right: 10px; background: #f1c40f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 18px; font-weight: bold; }
+        .click-area { width: 200px; height: 200px; background: linear-gradient(145deg, #e67e22, #d35400); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(211,84,0,0.6); cursor: pointer; transition: transform 0.1s ease; }
+        .click-area:active { transform: scale(0.95); }
+        .pickaxe { font-size: 80px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
+        .status-bar { color: #2ecc71; font-size: 12px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <div class="stats-card">
-        <div class="uid" id="uid">正在安全链接加密协议...</div>
-        <div class="label">当前实时算力收益</div>
-        <div class="balance">💰 <span id="bal">0.0000</span></div>
+    <div id="uid" class="tip">正在安全验证身份协议...</div>
+
+    <div class="card">
+        <div class="title">当前实时算力收益</div>
+        <div class="balance-box">
+            <div class="coin-icon">$</div>
+            <span id="bal">0.0000</span>
+        </div>
     </div>
 
-    <button class="mine-btn" id="mbtn">⛏️</button>
-    
-    <div class="hint">离线挖矿收益已自动开启</div>
+    <div id="mbtn" class="click-area">
+        <div class="pickaxe">⛏️</div>
+    </div>
+
+    <div class="status-bar">离线挖矿收益已自动开启</div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        let balance = 0.0000;
+        const mineRate = 0.0015;
 
-        let balance = 0;
-        let userId = "Guest";
+        // 初始化 Telegram WebApp 交互
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) {
+            tg.expand();
+            tg.ready();
+            const user = tg.initDataUnsafe?.user;
+            document.getElementById('uid').innerText = user ? ("矿工账号: " + (user.username || user.first_name)) : "安全加密链接已就绪";
+        } else {
+            document.getElementById('uid').innerText = "本地单机测试模式";
+        }
 
-        function init() {
-            // 延迟确保获取到 TG 数据
-            setTimeout(() => {
-                const user = tg.initDataUnsafe.user;
-                if (user) {
-                    userId = user.id;
-                    document.getElementById('uid').innerText = "矿工ID: " + userId;
-                } else {
-                    document.getElementById('uid').innerText = "测试预览模式 (非TG环境)";
+        const btn = document.getElementById('mbtn');
+        const balDisplay = document.getElementById('bal');
+
+        // 强力绑定点击自增事件
+        if (btn && balDisplay) {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                balance += mineRate;
+                balDisplay.innerText = balance.toFixed(4);
+                
+                // 触发手机硬件震动
+                if (tg && tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('medium');
                 }
-
-                // 加载存稿
-                balance = parseFloat(localStorage.getItem('iwa_bal_' + userId)) || 0;
-                refreshUI();
-
-                // 核心逻辑 1：手动点击挖矿
-                const btn = document.getElementById('mbtn');
-                btn.addEventListener('click', () => {
-                    balance += 0.0005; // 点击收益
-                    saveAndRefresh();
-                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
-                });
-
-                // 核心逻辑 2：全自动产矿 (每 100 毫秒跳动一次，视觉效果更丝滑)
-                setInterval(() => {
-                    balance += 0.00001; 
-                    saveAndRefresh();
-                }, 100);
-
-            }, 200);
+            });
         }
-
-        function saveAndRefresh() {
-            document.getElementById('bal').innerText = balance.toFixed(4);
-            localStorage.setItem('iwa_bal_' + userId, balance);
-        }
-
-        function refreshUI() {
-            document.getElementById('bal').innerText = balance.toFixed(4);
-        }
-
-       
-  <script>
-    // 强制初始化本地点击系统
-    let balance = 0.0000;
-    const mineRate = 0.0015;
-
-    const tg = window.Telegram ? window.Telegram.WebApp : null;
-    if (tg) {
-        tg.expand();
-        const user = tg.initDataUnsafe?.user;
-        const uidEl = document.getElementById('uid');
-        if(uidEl) {
-            uidEl.innerText = user ? ("矿工: " + (user.username || user.first_name)) : "加密链接就绪";
-        }
-    }
-
-    // 绑定点击事件
-    const btn = document.querySelector('.orange-circle') || document.getElementById('mbtn');
-    const balDisplay = document.getElementById('bal');
-
-    if(btn && balDisplay) {
-        btn.addEventListener('click', () => {
-            balance += mineRate;
-            balDisplay.innerText = balance.toFixed(4); // 刷新屏幕上的数字
-            if (tg && tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium'); // 震动
-            }
-        });
-    }
-</script>
-
-
+    </script>
 </body>
 </html>
