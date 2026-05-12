@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>复刻矿场</title>
-    <!-- 这行必须单独占一行，且一个字母都不能错 -->
+    <title>高级复刻矿池</title>
+    <!-- 【核心电缆】这行一个字母都不能改，这是链接Telegram大脑的唯一通道 -->
     <script src="https://telegram.org"></script>
     <style>
         body { background: #000; color: #fff; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
@@ -14,27 +14,44 @@
     </style>
 </head>
 <body>
-    <div style="color:#f1c40f">矿工ID: <span id="uid">正在链接...</span></div>
-    <div class="bal">💰 <span id="num">0.0000</span></div>
+    <div style="color:#f1c40f">矿工协议: <span id="uid">正在识别...</span></div>
+    <div class="bal">💰 <span id="bal">0.0000</span></div>
     <button class="btn" id="mbtn">⛏️</button>
+
     <script>
+        // 1. 强制唤醒 Telegram 神经系统
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
-        function update() {
+
+        function startApp() {
+            // 2. 读取用户 ID
             const user = tg.initDataUnsafe.user;
             const uid = user ? user.id : "测试模式";
-            document.getElementById('uid').innerText = uid;
-            let score = parseFloat(localStorage.getItem('b_' + uid)) || 0;
-            document.getElementById('num').innerText = score.toFixed(4);
+            document.getElementById('uid').innerText = "矿工ID: " + uid;
+
+            // 3. 读取存档
+            let score = parseFloat(localStorage.getItem('pro_bal_' + uid)) || 0;
+            document.getElementById('bal').innerText = score.toFixed(4);
+
+            // 4. 点击逻辑
             document.getElementById('mbtn').onclick = () => {
-                score += 0.0001;
-                document.getElementById('num').innerText = score.toFixed(4);
-                localStorage.setItem('b_' + uid, score);
-                tg.HapticFeedback.impactOccurred('medium');
+                score += 0.0005;
+                document.getElementById('bal').innerText = score.toFixed(4);
+                localStorage.setItem('pro_bal_' + uid, score);
+                tg.HapticFeedback.impactOccurred('heavy');
             };
+
+            // 5. 真正的干货：自动产矿（每秒增加）
+            setInterval(() => {
+                score += 0.0001;
+                document.getElementById('bal').innerText = score.toFixed(4);
+                localStorage.setItem('pro_bal_' + uid, score);
+            }, 1000);
         }
-        window.onload = update;
+
+        // 页面加载完立刻执行
+        window.onload = startApp;
     </script>
 </body>
 </html>
