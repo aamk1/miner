@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IWA 矿场</title>
+    <!-- 核心安全引入：Telegram WebApp 支持脚本 -->
     <script src="telegram.org"></script>
     <style>
         body { margin: 0; background-color: #111; color: #fff; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
         .card { background: #222; border: 1px solid #333; padding: 20px; border-radius: 15px; text-align: center; width: 80%; max-width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 30px; }
-        .tip { color: #888; font-size: 13px; margin-bottom: 5px; }
+        .tip { color: #888; font-size: 13px; margin-bottom: 5px; font-weight: bold; }
         .title { color: #aaa; font-size: 14px; margin-bottom: 10px; }
         .balance-box { display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; color: #f39c12; }
         .coin-icon { width: 30px; height: 30px; margin-right: 10px; background: #f1c40f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 18px; font-weight: bold; }
@@ -20,6 +21,7 @@
 </head>
 <body>
 
+    <!-- 用于动态显示矿工 Telegram 昵称 -->
     <div id="uid" class="tip">正在安全验证身份协议...</div>
 
     <div class="card">
@@ -38,35 +40,66 @@
 
     <script>
         let balance = 0.0000;
-        const mineRate = 0.0015;
+        const mineRate = 0.0015; // 每次点击获得的 USDT 算力值
+        let userId = "guest";
 
-        // 初始化 Telegram WebApp 交互
+        // 初始化 Telegram WebApp 交互环境
         const tg = window.Telegram ? window.Telegram.WebApp : null;
-        if (tg) {
-            tg.expand();
-            tg.ready();
-            const user = tg.initDataUnsafe?.user;
-            document.getElementById('uid').innerText = user ? ("矿工账号: " + (user.username || user.first_name)) : "安全加密链接已就绪";
-        } else {
-            document.getElementById('uid').innerText = "本地单机测试模式";
+        
+        async function initGame() {
+            if (tg) {
+                tg.expand(); // 自动拉伸铺满电报全屏
+                tg.ready();
+                const user = tg.initDataUnsafe?.user;
+                if (user) {
+                    userId = user.id.toString();
+                    document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name);
+                } else {
+                    document.getElementById('uid').innerText = "加密安全链接已就绪";
+                }
+            } else {
+                document.getElementById('uid').innerText = "本地单机测试模式";
+            }
+
+            // 远程加载：从 Vercel Redis 云端数据库中获取该玩家已存的金币
+            try {
+                const res = await fetch(`/api/balance?userId=${userId}`);
+                const data = await res.json();
+                if (data && data.balance) {
+                    balance = parseFloat(data.balance);
+                    document.getElementById('bal').innerText = balance.toFixed(4);
+                }
+            } catch (e) { console.log("新矿工入场，使用初始数据进行挖矿"); }
         }
 
         const btn = document.getElementById('mbtn');
         const balDisplay = document.getElementById('bal');
 
-        // 强力绑定点击自增事件
+        // 核心逻辑：点击挖矿并实时悄悄同步回云端数据库
         if (btn && balDisplay) {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 balance += mineRate;
                 balDisplay.innerText = balance.toFixed(4);
                 
-                // 触发手机硬件震动
+                // 物理特效：触发手机原生硬件微震动
                 if (tg && tg.HapticFeedback) {
                     tg.HapticFeedback.impactOccurred('medium');
                 }
+
+                // 异步上传：静默发送最新积分到后端
+                try {
+                    await fetch('/api/balance', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: userId, balance: balance })
+                    });
+                } catch (e) { console.error("云端同步失败，暂时本地存储"); }
             });
         }
+
+        // 启动执行
+        initGame();
     </script>
 </body>
 </html>
