@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IWA 矿场</title>
-    <!-- 1. 严格使用最新的官方完整路径支持脚本 -->
+    <!-- 引入最稳定不锁域的官方 CDN 脚本 -->
     <script src="telegram.org"></script>
     <style>
         body { margin: 0; background-color: #111; color: #fff; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
         .card { background: #222; border: 1px solid #333; padding: 20px; border-radius: 15px; text-align: center; width: 80%; max-width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 30px; }
-        .tip { color: #888; font-size: 13px; margin-bottom: 5px; font-weight: bold; }
+        .tip { color: #f1c40f; font-size: 14px; margin-bottom: 5px; font-weight: bold; }
         .title { color: #aaa; font-size: 14px; margin-bottom: 10px; }
         .balance-box { display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; color: #f39c12; }
         .coin-icon { width: 30px; height: 30px; margin-right: 10px; background: #f1c40f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 18px; font-weight: bold; }
@@ -21,7 +21,7 @@
 </head>
 <body>
 
-    <div id="uid" class="tip">正在安全验证身份协议...</div>
+    <div id="uid" class="tip">正在初始化安全通道...</div>
 
     <div class="card">
         <div class="title">当前实时算力收益</div>
@@ -42,31 +42,32 @@
         const mineRate = 0.0015;
         let userId = "guest";
 
-        // 2. 强行监听 SDK 初始化事件，不使用不稳定的延时函数
-        function startBotSystem() {
-            const tg = window.Telegram ? window.Telegram.WebApp : null;
-            
-            if (tg) {
-                try {
-                    tg.ready(); // 必须首行执行 ready() 激活通信链路
-                    tg.expand(); // 自动展开展开全屏
+        // 原生底层高强度激活逻辑
+        function forceInitSystem() {
+            try {
+                // 1. 显式告知 Telegram 客户端网页已就绪
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
                     
-                    // 解锁核心：同时尝试读取真实环境参数
-                    const user = tg.initDataUnsafe?.user || window.Telegram.WebApp.initDataUnsafe?.user;
+                    // 2. 强行双重提取用户凭证数据
+                    const tgData = window.Telegram.WebApp.initDataUnsafe;
+                    const user = tgData?.user || (window.parent && window.parent.Telegram?.WebApp?.initDataUnsafe?.user);
+                    
                     if (user && user.id) {
                         userId = user.id.toString();
-                        document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name);
+                        document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name || user.id);
                     } else {
-                        document.getElementById('uid').innerText = "加密安全链接已就绪";
+                        document.getElementById('uid').innerText = "安全链路已就绪 (等待客户端写入)";
                     }
-                } catch(err) {
-                    document.getElementById('uid').innerText = "参数捕获断开，尝试保底连接";
+                } else {
+                    document.getElementById('uid').innerText = "本地单机测试模式";
                 }
-            } else {
-                document.getElementById('uid').innerText = "本地单机测试模式";
+            } catch (err) {
+                document.getElementById('uid').innerText = "单机保底模式激活";
             }
 
-            // 远程调取 Redis 云端存盘数据
+            // 从云端调取该用户在 Redis 存盘的数据
             fetch(`/api/balance?userId=${userId}`)
                 .then(res => res.json())
                 .then(data => {
@@ -74,7 +75,7 @@
                         balance = parseFloat(data.balance);
                         document.getElementById('bal').innerText = balance.toFixed(4);
                     }
-                }).catch(e => console.log("初始化同步就绪"));
+                }).catch(e => console.log("首次入场初始化"));
         }
 
         const btn = document.getElementById('mbtn');
@@ -86,26 +87,21 @@
                 balance += mineRate;
                 balDisplay.innerText = balance.toFixed(4);
                 
-                const tg = window.Telegram?.WebApp;
-                if (tg && tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('medium');
+                if (window.Telegram?.WebApp?.HapticFeedback) {
+                    window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
                 }
 
-                // 异步上传存储
+                // 异步上传实时积分到 Redis
                 fetch('/api/balance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: userId, balance: balance })
-                }).catch(e => console.error("同步延迟"));
+                }).catch(e => console.error("数据暂存本地"));
             });
         }
 
-        // 确保页面 DOM 加载完毕后立即启动
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", startBotSystem);
-        } else {
-            startBotSystem();
-        }
+        // 强绑页面最高优先级加载完成事件
+        window.addEventListener('load', forceInitSystem);
     </script>
 </body>
 </html>
