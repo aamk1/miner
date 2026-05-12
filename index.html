@@ -81,5 +81,31 @@
 
         window.onload = init;
     </script>
+    // 强制初始化本地点击系统
+    let balance = 0.0000;
+    const mineRate = 0.0015; // 每次点击增加的数字
+
+    const tg = window.Telegram ? window.Telegram.WebApp : null;
+    if (tg) {
+        tg.expand();
+        const user = tg.initDataUnsafe?.user;
+        document.getElementById('uid').innerText = user ? ("矿工: " + (user.username || user.first_name)) : "加密链接就绪";
+    }
+
+    const btn = document.getElementById('mbtn');
+    const balDisplay = document.getElementById('bal');
+
+    // 绑定强制点击事件，绕过所有报错
+    if(btn && balDisplay) {
+        btn.addEventListener('click', () => {
+            balance += mineRate;
+            balDisplay.innerText = balance.toFixed(4); // 刷新数字显示
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium'); // 手机震动反馈
+            }
+        });
+    }
+</script>
+
 </body>
 </html>
