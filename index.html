@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IWA 矿场</title>
-    <!-- 引入 Telegram Mini App 核心通信 SDK -->
+    <!-- 1. 强制引入 Telegram 官方核心 SDK 通信脚本 -->
     <script src="telegram.org"></script>
     <style>
         body { margin: 0; background-color: #111; color: #fff; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
@@ -21,28 +21,29 @@
 </head>
 <body>
 
-    <div id="uid" class="tip">正在初始化安全通道...</div>
+    <!-- 2. 强行自建纯净 HTML 结构，彻底废除旧源码里的冲突标签 -->
+    <div id="custom-uid" class="tip">正在初始化安全通道...</div>
 
     <div class="card">
         <div class="title">当前实时算力收益</div>
         <div class="balance-box">
             <div class="coin-icon">$</div>
-            <span id="bal">0.0000</span>
+            <span id="custom-bal">0.0000</span>
         </div>
     </div>
 
-    <div id="mbtn" class="click-area">
+    <div id="custom-mbtn" class="click-area">
         <div class="pickaxe">⛏️</div>
     </div>
 
-    <div class="status-bar">离线挖矿收益已自动开启</div>
+    <div class="status-bar">电报云端数据库同步中</div>
 
     <script>
         let balance = 0.0000;
-        const mineRate = 0.0015; // 每次点击增加的数值
+        const mineRate = 0.0015;
         let userId = "guest";
 
-        // 强行穿透并激活 Telegram WebApp 原生环境
+        // 3. 原生底层高强度激活逻辑
         function forceInitSystem() {
             try {
                 if (window.Telegram && window.Telegram.WebApp) {
@@ -54,30 +55,30 @@
                     
                     if (user && user.id) {
                         userId = user.id.toString();
-                        document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name || user.id);
+                        document.getElementById('custom-uid').innerText = "矿工账号: " + (user.username || user.first_name || user.id);
                     } else {
-                        document.getElementById('uid').innerText = "安全链路已就绪 (等待客户端写入)";
+                        document.getElementById('custom-uid').innerText = "安全链路已就绪 (等待客户端写入)";
                     }
                 } else {
-                    document.getElementById('uid').innerText = "本地单机测试模式";
+                    document.getElementById('custom-uid').innerText = "本地单机测试模式";
                 }
             } catch (err) {
-                document.getElementById('uid').innerText = "单机保底模式激活";
+                document.getElementById('custom-uid').innerText = "单机保底模式激活";
             }
 
-            // 远程从 Vercel Redis 数据库调取历史存盘数据
+            // 从云端调取该用户在 Redis 存盘的数据
             fetch(`/api/balance?userId=${userId}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.balance) {
                         balance = parseFloat(data.balance);
-                        document.getElementById('bal').innerText = balance.toFixed(4);
+                        document.getElementById('custom-bal').innerText = balance.toFixed(4);
                     }
-                }).catch(e => console.log("新矿工初始化就绪"));
+                }).catch(e => console.log("首次入场初始化"));
         }
 
-        const btn = document.getElementById('mbtn');
-        const balDisplay = document.getElementById('bal');
+        const btn = document.getElementById('custom-mbtn');
+        const balDisplay = document.getElementById('custom-bal');
 
         if (btn && balDisplay) {
             btn.addEventListener('click', (e) => {
@@ -85,12 +86,11 @@
                 balance += mineRate;
                 balDisplay.innerText = balance.toFixed(4);
                 
-                // 手机硬件物理微震动特效
                 if (window.Telegram?.WebApp?.HapticFeedback) {
                     window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
                 }
 
-                // 悄悄同步上传到 Redis 数据库
+                // 异步上传实时积分到 Redis
                 fetch('/api/balance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
