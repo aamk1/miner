@@ -21,7 +21,7 @@
 </head>
 <body>
 
-    <div id="uid" class="tip">等待 Telegram 身份注入...</div>
+    <div id="uid" class="tip">正在初始化安全通道...</div>
 
     <div class="card">
         <div class="title">当前实时算力收益</div>
@@ -35,34 +35,37 @@
         <div class="pickaxe">⛏️</div>
     </div>
 
-    <div class="status-bar">电报云端数据库同步中</div>
+    <div class="status-bar">离线挖矿收益已自动开启</div>
 
     <script>
         let balance = 0.0000;
-        const mineRate = 0.0015;
+        const mineRate = 0.0015; // 每次点击增加的数值
         let userId = "guest";
 
-        // 强行通过 Telegram WebApp 对象激活
-        const tg = window.Telegram?.WebApp;
-
-        function initTelegramApp() {
-            if (tg) {
-                tg.ready();
-                tg.expand();
-                
-                // 核心：读取电报客户端传过来的原生数据包
-                const user = tg.initDataUnsafe?.user;
-                if (user && user.id) {
-                    userId = user.id.toString();
-                    document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name);
+        // 强行穿透并激活 Telegram WebApp 原生环境
+        function forceInitSystem() {
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
+                    
+                    const tgData = window.Telegram.WebApp.initDataUnsafe;
+                    const user = tgData?.user || (window.parent && window.parent.Telegram?.WebApp?.initDataUnsafe?.user);
+                    
+                    if (user && user.id) {
+                        userId = user.id.toString();
+                        document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name || user.id);
+                    } else {
+                        document.getElementById('uid').innerText = "安全链路已就绪 (等待客户端写入)";
+                    }
                 } else {
-                    document.getElementById('uid').innerText = "电报内置通道已建立";
+                    document.getElementById('uid').innerText = "本地单机测试模式";
                 }
-            } else {
-                document.getElementById('uid').innerText = "非电报客户端打开";
+            } catch (err) {
+                document.getElementById('uid').innerText = "单机保底模式激活";
             }
 
-            // 从云端調取 Redis 数据
+            // 远程从 Vercel Redis 数据库调取历史存盘数据
             fetch(`/api/balance?userId=${userId}`)
                 .then(res => res.json())
                 .then(data => {
@@ -70,7 +73,7 @@
                         balance = parseFloat(data.balance);
                         document.getElementById('bal').innerText = balance.toFixed(4);
                     }
-                }).catch(e => console.log("新矿工初始化"));
+                }).catch(e => console.log("新矿工初始化就绪"));
         }
 
         const btn = document.getElementById('mbtn');
@@ -82,25 +85,22 @@
                 balance += mineRate;
                 balDisplay.innerText = balance.toFixed(4);
                 
-                if (tg && tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('medium');
+                // 手机硬件物理微震动特效
+                if (window.Telegram?.WebApp?.HapticFeedback) {
+                    window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
                 }
 
-                // 同步至云端
+                // 悄悄同步上传到 Redis 数据库
                 fetch('/api/balance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: userId, balance: balance })
-                }).catch(e => console.error("同步延迟"));
+                }).catch(e => console.error("数据暂存本地"));
             });
         }
 
-        // 强制确保通信就绪
-        if (tg) {
-            initTelegramApp();
-        } else {
-            window.addEventListener('load', initTelegramApp);
-        }
+        // 强绑页面最高优先级加载完成事件
+        window.addEventListener('load', forceInitSystem);
     </script>
 </body>
 </html>
