@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>复刻矿场</title>
-    <!-- 关键：这是Telegram的大脑，千万别改动这行 -->
+    <!-- 100% 严谨的神经系统链接 -->
     <script src="https://telegram.org"></script>
     <style>
         body { background: #000; color: #fff; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .bal { font-size: 50px; font-weight: bold; color: #f1c40f; margin: 10px 0; }
-        .btn { width: 180px; height: 180px; border-radius: 50%; background: #e67e22; border: 5px solid #333; font-size: 70px; cursor: pointer; }
+        .btn { width: 180px; height: 180px; border-radius: 50%; background: #e67e22; border: 5px solid #333; font-size: 70px; cursor: pointer; outline: none; }
+        .btn:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -22,19 +23,24 @@
         tg.ready();
         tg.expand();
 
-        const user = tg.initDataUnsafe.user;
-        const uid = user ? user.id : "测试模式";
-        document.getElementById('uid').innerText = uid;
+        // 核心：强制读取 ID
+        function updateUI() {
+            const user = tg.initDataUnsafe.user;
+            const uid = user ? user.id : "测试模式";
+            document.getElementById('uid').innerText = uid;
 
-        let score = parseFloat(localStorage.getItem('b_' + uid)) || 0;
-        document.getElementById('num').innerText = score.toFixed(4);
-
-        document.getElementById('mbtn').onclick = () => {
-            score += 0.0001;
+            let score = parseFloat(localStorage.getItem('b_' + uid)) || 0;
             document.getElementById('num').innerText = score.toFixed(4);
-            localStorage.setItem('b_' + uid, score);
-            if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-        };
+
+            document.getElementById('mbtn').onclick = () => {
+                score += 0.0001;
+                document.getElementById('num').innerText = score.toFixed(4);
+                localStorage.setItem('b_' + uid, score);
+                if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            };
+        }
+        // 确保在页面加载后执行
+        window.onload = updateUI;
     </script>
 </body>
 </html>
