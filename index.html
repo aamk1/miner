@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>复刻矿场</title>
+    <!-- 正确的核心脚本引用 -->
     <script src="https://telegram.org"></script>
     <style>
         body { background: #0f0f0f; color: #fff; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .balance { font-size: 45px; font-weight: bold; color: #f1c40f; margin: 10px 0; }
-        .btn { width: 180px; height: 180px; border-radius: 50%; background: #e67e22; border: 6px solid #333; font-size: 70px; cursor: pointer; }
+        .btn { width: 180px; height: 180px; border-radius: 50%; background: #e67e22; border: 6px solid #333; font-size: 70px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; }
+        .btn:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -18,21 +20,21 @@
     <button class="btn" id="mbtn">⛏️</button>
 
     <script>
-        // 强制初始化
+        // 1. 初始化 Telegram 环境
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        // 获取ID逻辑
+        // 2. 获取并显示用户 ID
         const user = tg.initDataUnsafe.user;
         const uid = user ? user.id : "测试模式";
         document.getElementById('uid').innerText = uid;
 
-        // 余额逻辑
+        // 3. 余额存档逻辑
         let score = parseFloat(localStorage.getItem('mybal_' + uid)) || 0;
         document.getElementById('bal').innerText = score.toFixed(4);
 
-        // 点击逻辑
+        // 4. 点击挖矿逻辑
         document.getElementById('mbtn').onclick = function() {
             score += 0.0001;
             document.getElementById('bal').innerText = score.toFixed(4);
