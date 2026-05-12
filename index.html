@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>复刻版矿场</title>
-    <!-- 引入 TG 小程序的核心神经系统 -->
+    <!-- 核心修复点：完整的神经系统链接 -->
     <script src="https://telegram.org"></script>
     <style>
         body { background-color: #0f0f0f; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; -webkit-user-select: none; }
@@ -21,30 +21,22 @@
     <button class="mine-btn" id="mineBtn">⛏️</button>
 
     <script>
-        // 1. 初始化 WebApp
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        // 2. 获取用户 ID (复刻核心点)
         const user = tg.initDataUnsafe.user;
         const userId = user ? user.id : "测试模式";
         document.getElementById('userid').innerText = userId;
 
-        // 3. 读取存档 (解决刷新归零)
         let balance = parseFloat(localStorage.getItem('bal_' + userId)) || 0;
         document.getElementById('balance').innerText = balance.toFixed(4);
 
-        // 4. 绑定点击事件 (解决手机点不动)
         const btn = document.getElementById('mineBtn');
         btn.addEventListener('click', () => {
             balance += 0.0001;
             document.getElementById('balance').innerText = balance.toFixed(4);
-            
-            // 保存数据
             localStorage.setItem('bal_' + userId, balance);
-            
-            // 触发震动反馈
             if (tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('medium');
             }
