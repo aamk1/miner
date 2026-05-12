@@ -3,46 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>復刻版礦場-存檔版</title>
+    <title>复刻版矿场</title>
+    <!-- 引入 TG 小程序的核心神经系统 -->
     <script src="https://telegram.org"></script>
     <style>
-        body { background-color: #0f0f0f; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        .user-id { color: #f1c40f; font-size: 14px; margin-bottom: 20px; border: 1px solid #333; padding: 5px 15px; border-radius: 20px; }
+        body { background-color: #0f0f0f; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; -webkit-user-select: none; }
         .balance-amount { font-size: 48px; font-weight: bold; color: #f1c40f; margin: 10px 0; }
-        .mine-btn { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, #f39c12, #d35400); border: 8px solid #333; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 80px; box-shadow: 0 0 20px rgba(243, 156, 18, 0.3); }
+        .mine-btn { width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, #f39c12, #d35400); border: 8px solid #333; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 80px; transition: transform 0.1s; outline: none; }
         .mine-btn:active { transform: scale(0.92); }
+        .user-id { color: #f1c40f; font-size: 14px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <div class="user-id">礦工 ID: <span id="userid">載入中...</span></div>
-    <div style="color: #888;">當前賬戶餘額</div>
+    <div class="user-id">矿工 ID: <span id="userid">同步中...</span></div>
+    <div style="color: #888;">当前账户余额</div>
     <div class="balance-amount">💰 <span id="balance">0.0000</span></div>
-    <button class="mine-btn" onclick="tapMine()">⛏️</button>
+    <button class="mine-btn" id="mineBtn">⛏️</button>
 
     <script>
+        // 1. 初始化 WebApp
         const tg = window.Telegram.WebApp;
-        tg.ready(); // 告訴 TG 網頁準備好了
-        tg.expand(); // 自動展開全屏
+        tg.ready();
+        tg.expand();
 
-        // 1. 讀取並顯示用戶 ID
-        const userId = tg.initDataUnsafe.user?.id || "本地測試";
+        // 2. 获取用户 ID (复刻核心点)
+        const user = tg.initDataUnsafe.user;
+        const userId = user ? user.id : "测试模式";
         document.getElementById('userid').innerText = userId;
 
-        // 2. 從「本地倉庫」讀取餘額 (解決刷新歸零的關鍵)
-        let balance = parseFloat(localStorage.getItem('user_balance_' + userId)) || 0;
+        // 3. 读取存档 (解决刷新归零)
+        let balance = parseFloat(localStorage.getItem('bal_' + userId)) || 0;
         document.getElementById('balance').innerText = balance.toFixed(4);
 
-        function tapMine() {
-            // 3. 增加餘額
+        // 4. 绑定点击事件 (解决手机点不动)
+        const btn = document.getElementById('mineBtn');
+        btn.addEventListener('click', () => {
             balance += 0.0001;
             document.getElementById('balance').innerText = balance.toFixed(4);
             
-            // 4. 即時保存到本地緩存
-            localStorage.setItem('user_balance_' + userId, balance);
+            // 保存数据
+            localStorage.setItem('bal_' + userId, balance);
             
-            // 5. 觸發手機震動 (100% 復刻手感)
-            tg.HapticFeedback.impactOccurred('medium');
-        }
+            // 触发震动反馈
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+        });
     </script>
 </body>
 </html>
