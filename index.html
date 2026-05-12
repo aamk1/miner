@@ -38,68 +38,64 @@
 
     <div class="status-bar">离线挖矿收益已自动开启</div>
 
-    <script>
-        let balance = 0.0000;
-        const mineRate = 0.0015; // 每次点击获得的 USDT 算力值
-        let userId = "guest";
+   <script>
+    let balance = 0.0000;
+    const mineRate = 0.0015;
+    let userId = "guest";
 
-        // 初始化 Telegram WebApp 交互环境
+    // 延迟 300 毫秒初始化，确保 Telegram 环境百分之百完全加载就绪
+    setTimeout(async function initGame() {
         const tg = window.Telegram ? window.Telegram.WebApp : null;
         
-        async function initGame() {
-            if (tg) {
-                tg.expand(); // 自动拉伸铺满电报全屏
-                tg.ready();
-                const user = tg.initDataUnsafe?.user;
-                if (user) {
-                    userId = user.id.toString();
-                    document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name);
-                } else {
-                    document.getElementById('uid').innerText = "加密安全链接已就绪";
-                }
-            } else {
-                document.getElementById('uid').innerText = "本地单机测试模式";
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            tg.expand();
+            tg.ready();
+            const user = tg.initDataUnsafe.user;
+            userId = user.id.toString();
+            document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name);
+        } else {
+            // 如果延迟后依然读不到，说明是真正的普通浏览器访问
+            document.getElementById('uid').innerText = "本地单机测试模式";
+        }
+
+        // 远程加载：从 Vercel Redis 云端数据库中获取该玩家已存的金币
+        try {
+            const res = await fetch(`/api/balance?userId=${userId}`);
+            const data = await res.json();
+            if (data && data.balance) {
+                balance = parseFloat(data.balance);
+                document.getElementById('bal').innerText = balance.toFixed(4);
+            }
+        } catch (e) { console.log("新矿工入场，使用初始数据进行挖矿"); }
+    }, 300);
+
+    const btn = document.getElementById('mbtn');
+    const balDisplay = document.getElementById('bal');
+
+    // 点击挖矿并实时悄悄同步回云端数据库
+    if (btn && balDisplay) {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            balance += mineRate;
+            balDisplay.innerText = balance.toFixed(4);
+            
+            // 触发手机原生硬件微震动
+            const tg = window.Telegram ? window.Telegram.WebApp : null;
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
             }
 
-            // 远程加载：从 Vercel Redis 云端数据库中获取该玩家已存的金币
+            // 异步上传最新积分到后端
             try {
-                const res = await fetch(`/api/balance?userId=${userId}`);
-                const data = await res.json();
-                if (data && data.balance) {
-                    balance = parseFloat(data.balance);
-                    document.getElementById('bal').innerText = balance.toFixed(4);
-                }
-            } catch (e) { console.log("新矿工入场，使用初始数据进行挖矿"); }
-        }
+                await fetch('/api/balance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userId, balance: balance })
+                });
+            } catch (e) { console.error("云端同步失败"); }
+        });
+    }
+</script>
 
-        const btn = document.getElementById('mbtn');
-        const balDisplay = document.getElementById('bal');
-
-        // 核心逻辑：点击挖矿并实时悄悄同步回云端数据库
-        if (btn && balDisplay) {
-            btn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                balance += mineRate;
-                balDisplay.innerText = balance.toFixed(4);
-                
-                // 物理特效：触发手机原生硬件微震动
-                if (tg && tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('medium');
-                }
-
-                // 异步上传：静默发送最新积分到后端
-                try {
-                    await fetch('/api/balance', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: userId, balance: balance })
-                    });
-                } catch (e) { console.error("云端同步失败，暂时本地存储"); }
-            });
-        }
-
-        // 启动执行
-        initGame();
-    </script>
 </body>
 </html>
