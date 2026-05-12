@@ -1,36 +1,47 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>复刻版矿场</title>
+    <title>復刻版礦場-存檔版</title>
     <script src="https://telegram.org"></script>
     <style>
         body { background-color: #0f0f0f; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        .user-info { position: absolute; top: 20px; left: 20px; font-size: 14px; color: #aaa; }
-        .balance-title { font-size: 18px; color: #888; }
+        .user-id { color: #f1c40f; font-size: 14px; margin-bottom: 20px; border: 1px solid #333; padding: 5px 15px; border-radius: 20px; }
         .balance-amount { font-size: 48px; font-weight: bold; color: #f1c40f; margin: 10px 0; }
-        .mine-btn { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, #f39c12, #d35400); border: 8px solid #333; box-shadow: 0 0 30px rgba(243, 156, 18, 0.4); cursor: pointer; transition: transform 0.1s; display: flex; align-items: center; justify-content: center; font-size: 80px; }
-        .mine-btn:active { transform: scale(0.95); }
+        .mine-btn { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, #f39c12, #d35400); border: 8px solid #333; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 80px; box-shadow: 0 0 20px rgba(243, 156, 18, 0.3); }
+        .mine-btn:active { transform: scale(0.92); }
     </style>
 </head>
 <body>
-    <div class="user-info">ID: <span id="userid">读取中...</span></div>
-    <div class="balance-title">当前余额</div>
+    <div class="user-id">礦工 ID: <span id="userid">載入中...</span></div>
+    <div style="color: #888;">當前賬戶餘額</div>
     <div class="balance-amount">💰 <span id="balance">0.0000</span></div>
     <button class="mine-btn" onclick="tapMine()">⛏️</button>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // 让网页撑满全屏
-        
-        let balance = 0;
-        document.getElementById('userid').innerText = tg.initDataUnsafe.user?.id || "本地测试";
+        tg.ready(); // 告訴 TG 網頁準備好了
+        tg.expand(); // 自動展開全屏
+
+        // 1. 讀取並顯示用戶 ID
+        const userId = tg.initDataUnsafe.user?.id || "本地測試";
+        document.getElementById('userid').innerText = userId;
+
+        // 2. 從「本地倉庫」讀取餘額 (解決刷新歸零的關鍵)
+        let balance = parseFloat(localStorage.getItem('user_balance_' + userId)) || 0;
+        document.getElementById('balance').innerText = balance.toFixed(4);
 
         function tapMine() {
+            // 3. 增加餘額
             balance += 0.0001;
             document.getElementById('balance').innerText = balance.toFixed(4);
-            tg.HapticFeedback.impactOccurred('medium'); // 手机震动反馈，复刻手感
+            
+            // 4. 即時保存到本地緩存
+            localStorage.setItem('user_balance_' + userId, balance);
+            
+            // 5. 觸發手機震動 (100% 復刻手感)
+            tg.HapticFeedback.impactOccurred('medium');
         }
     </script>
 </body>
