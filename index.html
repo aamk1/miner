@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IWA 矿场</title>
-    <!-- 核心安全引入：Telegram WebApp 支持脚本 -->
+    <!-- 1. 严格使用最新的官方完整路径支持脚本 -->
     <script src="telegram.org"></script>
     <style>
         body { margin: 0; background-color: #111; color: #fff; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
@@ -21,7 +21,6 @@
 </head>
 <body>
 
-    <!-- 用于动态显示矿工 Telegram 昵称 -->
     <div id="uid" class="tip">正在安全验证身份协议...</div>
 
     <div class="card">
@@ -38,64 +37,75 @@
 
     <div class="status-bar">离线挖矿收益已自动开启</div>
 
-   <script>
-    let balance = 0.0000;
-    const mineRate = 0.0015;
-    let userId = "guest";
+    <script>
+        let balance = 0.0000;
+        const mineRate = 0.0015;
+        let userId = "guest";
 
-    // 延迟 300 毫秒初始化，确保 Telegram 环境百分之百完全加载就绪
-    setTimeout(async function initGame() {
-        const tg = window.Telegram ? window.Telegram.WebApp : null;
-        
-        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            tg.expand();
-            tg.ready();
-            const user = tg.initDataUnsafe.user;
-            userId = user.id.toString();
-            document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name);
-        } else {
-            // 如果延迟后依然读不到，说明是真正的普通浏览器访问
-            document.getElementById('uid').innerText = "本地单机测试模式";
+        // 2. 强行监听 SDK 初始化事件，不使用不稳定的延时函数
+        function startBotSystem() {
+            const tg = window.Telegram ? window.Telegram.WebApp : null;
+            
+            if (tg) {
+                try {
+                    tg.ready(); // 必须首行执行 ready() 激活通信链路
+                    tg.expand(); // 自动展开展开全屏
+                    
+                    // 解锁核心：同时尝试读取真实环境参数
+                    const user = tg.initDataUnsafe?.user || window.Telegram.WebApp.initDataUnsafe?.user;
+                    if (user && user.id) {
+                        userId = user.id.toString();
+                        document.getElementById('uid').innerText = "矿工账号: " + (user.username || user.first_name);
+                    } else {
+                        document.getElementById('uid').innerText = "加密安全链接已就绪";
+                    }
+                } catch(err) {
+                    document.getElementById('uid').innerText = "参数捕获断开，尝试保底连接";
+                }
+            } else {
+                document.getElementById('uid').innerText = "本地单机测试模式";
+            }
+
+            // 远程调取 Redis 云端存盘数据
+            fetch(`/api/balance?userId=${userId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.balance) {
+                        balance = parseFloat(data.balance);
+                        document.getElementById('bal').innerText = balance.toFixed(4);
+                    }
+                }).catch(e => console.log("初始化同步就绪"));
         }
 
-        // 远程加载：从 Vercel Redis 云端数据库中获取该玩家已存的金币
-        try {
-            const res = await fetch(`/api/balance?userId=${userId}`);
-            const data = await res.json();
-            if (data && data.balance) {
-                balance = parseFloat(data.balance);
-                document.getElementById('bal').innerText = balance.toFixed(4);
-            }
-        } catch (e) { console.log("新矿工入场，使用初始数据进行挖矿"); }
-    }, 300);
+        const btn = document.getElementById('mbtn');
+        const balDisplay = document.getElementById('bal');
 
-    const btn = document.getElementById('mbtn');
-    const balDisplay = document.getElementById('bal');
+        if (btn && balDisplay) {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                balance += mineRate;
+                balDisplay.innerText = balance.toFixed(4);
+                
+                const tg = window.Telegram?.WebApp;
+                if (tg && tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('medium');
+                }
 
-    // 点击挖矿并实时悄悄同步回云端数据库
-    if (btn && balDisplay) {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            balance += mineRate;
-            balDisplay.innerText = balance.toFixed(4);
-            
-            // 触发手机原生硬件微震动
-            const tg = window.Telegram ? window.Telegram.WebApp : null;
-            if (tg && tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
-            }
-
-            // 异步上传最新积分到后端
-            try {
-                await fetch('/api/balance', {
+                // 异步上传存储
+                fetch('/api/balance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: userId, balance: balance })
-                });
-            } catch (e) { console.error("云端同步失败"); }
-        });
-    }
-</script>
+                }).catch(e => console.error("同步延迟"));
+            });
+        }
 
+        // 确保页面 DOM 加载完毕后立即启动
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", startBotSystem);
+        } else {
+            startBotSystem();
+        }
+    </script>
 </body>
 </html>
